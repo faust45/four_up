@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My New CouchApp</title>
+    <link rel="stylesheet" href="style/main.css" type="text/css">
+  </head>
+  <body>
+    <div id="main">
+      <div id="new-game">
+      </div>
+      <div id="play-board">
+      </div>
+
+      <div id="sidebar">
+      </div>
+    </div>
+  </body>
+
+  <script src="vendor/couchapp/loader.js"></script>
+  <script type="text/javascript" charset="utf-8">
+    $.log('my mess');
+    $.couch.app(function(app) {
+      Game.init(app);
+
+      $("#play-board").evently("play-board", app);
+      $("#new-game").evently("new-game", app);
+
+      //$('#play-board').trigger('update', [1234]);
+
+      //$("#account").evently("account", app);
+      // $.evently.connect("#account","#profile", ["loggedIn","loggedOut"]);
+    });
+  </script>
+</html>
