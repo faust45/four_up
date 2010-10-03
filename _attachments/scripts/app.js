@@ -1,6 +1,5 @@
 Game = {
   app: null,
-  playerKey: null,
   doc: {
     type: 'Game', 
     board: {} 
@@ -15,6 +14,16 @@ Game = {
     if (path) {
       this.gameCode = path.replace('#', '');
     }
+
+    if (this.iamGameStarter()) {
+      this.myTool = 'heart';
+      this.partnerTool = 'star';
+      this.waitStepType = 'evn';
+    } else {
+      this.myTool = 'star';
+      this.partnerTool = 'heart';
+      this.waitStepType = 'odd';
+    }
   },
 
   createNew: function(fun) {
@@ -24,7 +33,6 @@ Game = {
       success: function(doc) {
         self.gameStarter = true;
         self.gameCode = doc.id;
-        self.playerKey = 'red';
 
         fun(self.gameCode);
       }
@@ -39,6 +47,7 @@ Game = {
 
     feed.onChange(function(resp) {
       feed.stop();
+      $('#play-board').trigger('myStep');
       fun();
     });
   },
@@ -48,28 +57,33 @@ Game = {
         Game.app.db.changes(null, {
           filter: 'four_up/step', 
           doc_id: Game.gameCode, 
-          player_key: this.playerKey, 
+          wait_step_type: this.waitStepType, 
           include_docs: true
         });
 
     feed.onChange(function(resp) {
       var doc = resp.results[0].doc;
-      Game.waitPartnerStep = false;
-      Game.updateBoard(doc.last_step);
-      $.log(doc.last_step, doc.last_step_by);
+      var x = doc.last_step.x;
+      var y = doc.last_step.y;
+
+      $.log('step come');
+      $.log(x, y, doc.last_step_by);
+       
+      Game.partnerStep = false;
+      Game.updateBoard(x, y, Game.partnerTool);
+      $('#play-board').trigger('myStep');
+      $.log('step end');
     });
   },
 
   enter: function(fun) {
     dbUpdate(this.app, 'enter_game', this.gameCode, {}, function() {
-      Game.playerKey = 'black';
-      Game.waitPartnerStep = true;
       fun();
     });
   },
 
   iamEnterGame: function() {
-    if (!this.gameStarter && this.gameCode) {
+    if (this.gameCode) {
       return true;
     } else {
       return false;
@@ -77,25 +91,20 @@ Game = {
   },
 
   iamGameStarter: function() {
-    return this.gameStarter;
+    return !this.iamEnterGame();
   },
 
-  isMyStep: function() {
-    return (Game.waitPartnerStep ? false : true);
-  },
-
-  step: function(x) {
-    return timesDown(this.boardMaxY, function(y) {
+  step: function(x, fun) {
+    for(var y = this.boardMaxY; y >= 1; y = y-1) {
       if (Game.isPlaceFree(x, y)) {
-        var coords = {x: x, y: y};
+        dbUpdate(Game.app, 'step', Game.gameCode, {x: x, y: y}, function(resp) {
+          Game.updateBoard(x, y, Game.myTool);
+          Game.partnerStep = true;
+        });
 
-        Game.doc.board[x + 'x' + y] = true;
-        Game.waitPartnerStep = true
-        Game.sendStep(x, y);
-
-        return coords; 
+        return;
       }
-    });
+    }
   },
 
   isPlaceFree: function(x, y) {
@@ -104,16 +113,11 @@ Game = {
     return isFree; 
   },
 
-  sendStep: function(x, y) {
-    dbUpdate(this.app, 'step', this.gameCode, {x: x, y: y, player_key: this.playerKey}, function(resp) {
-      $.log('in resp updateStep');
-      $.log(resp);
-    });
-  },
-
-  updateBoard: function(lastStep) {
-    $.log('in updateBoard');
-    $.log(lastStep);
-    $('#play-board').trigger('update', lastStep);
+  updateBoard: function(x, y, tool) {
+    x = parseInt(x);
+    y = parseInt(y);
+    this.doc.board[x + 'x' + y] = true;
+    $('#play-board tr:eq('+ (y + 1) +') td:eq('+ (x - 1) +')').trigger('update', [tool]);
   }
+
 }

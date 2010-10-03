@@ -17,7 +17,7 @@ function times(count, fun) {
 function timesDown(count, fun) {
   for(var i = count - 1; i >= 0; i = i-1) {
     var value = fun(i);
-    if (value) {
+    if (value != null) {
       return value;
     }
   }

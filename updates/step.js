@@ -4,7 +4,11 @@ function(doc, req) {
 
   doc.board[x + 'x' + y] = true;
   doc.last_step = {x: x, y: y};
-  doc.last_step_by = req.query.player_key;
+  if (!doc.step_count) {
+    doc.step_count = 0
+  }
+
+  doc.step_count = parseInt(doc.step_count) + 1;
 
   return [doc, message];
 }

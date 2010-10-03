@@ -33,8 +33,13 @@ h1 {
   height: 4em;
 }
 
-#play-board table th.active {
+#play-board table th.active-heart {
   background-image: url('images/hand-heart.png');
+  background-repeat:no-repeat;
+}
+
+#play-board table th.active-star {
+  background-image: url('images/hand-star.png');
   background-repeat:no-repeat;
 }
 
