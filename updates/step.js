@@ -1,14 +1,28 @@
 function(doc, req) {
-  var x = req.query.x, y = req.query.y;
-  var message = 'ok x:' + x + ', y:' + y + ' user: ' + req.userCtx.name;
+  // !code vendor/couchapp/md5.js
+  // !code vendor/couchapp/user.js
+  
 
-  doc.board[x + 'x' + y] = true;
-  doc.last_step = {x: x, y: y};
-  if (!doc.step_count) {
-    doc.step_count = 0
+  if (req.query.key) {
+    var x = req.query.x, y = req.query.y;
+    var message = "ok";
+
+    var game = Game(doc);
+    var currentUser = User(req.query.key);
+
+    game.tryEnter(currentUser);
+    game.auth(currentUser);
+
+    if (!game.isMyLastStep(currentUser)) {
+      game.step(currentUser, x, y);
+      message = 'ok';
+    } else {
+      doc = null
+      message = 'waiting partner step';
+    }
+  } else {
+    doc = null;
   }
-
-  doc.step_count = parseInt(doc.step_count) + 1;
 
   return [doc, message];
 }

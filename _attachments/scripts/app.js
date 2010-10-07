@@ -1,123 +1,119 @@
-Game = {
-  app: null,
-  doc: {
-    type: 'Game', 
-    board: {} 
-  },
+GameModule = function(docApp) {
+  //init
+  var app = docApp;
+  var boardMaxX = 6, boardMaxY = 7;
+  var board = {};
+  var privateKey = genRand();
+  var gameDoc = {
+  };
 
-  boardMaxX: 6,
-  boardMaxY: 7, 
+  var iamGameStarter = isBlank(getIDfromPath());
+  var init;
+  
+  if (iamGameStarter) {
+    var myTool = 'heart', partnerTool = 'star';
+  } else {
+    var myTool = 'star', partnerTool = 'heart';
+    gameDoc._id = getIDfromPath();
 
-  init: function(app) {
-    this.app = app;
-    var path = $.pathbinder.currentPath();
-    if (path) {
-      this.gameCode = path.replace('#', '');
+    init = function() {
+      listenPartnerFeed();
+      loadBoard();
     }
-
-    if (this.iamGameStarter()) {
-      this.myTool = 'heart';
-      this.partnerTool = 'star';
-      this.waitStepType = 'evn';
-    } else {
-      this.myTool = 'star';
-      this.partnerTool = 'heart';
-      this.waitStepType = 'odd';
-    }
-  },
-
-  createNew: function(fun) {
-    var self = this;
-
-    this.app.db.saveDoc(this.doc, {
-      success: function(doc) {
-        self.gameStarter = true;
-        self.gameCode = doc.id;
-
-        fun(self.gameCode);
-      }
-    });
-  },
-
-  waitingPartner: function(fun) {
-    var feed = this.app.db.changes(null, {
-        filter: 'four_up/partner_enter', 
-        doc_id: this.gameCode
-    });
-
-    feed.onChange(function(resp) {
-      feed.stop();
-      $('#play-board').trigger('myStep');
-      fun();
-    });
-  },
-
-  start: function() {
-    var feed = 
-        Game.app.db.changes(null, {
-          filter: 'four_up/step', 
-          doc_id: Game.gameCode, 
-          wait_step_type: this.waitStepType, 
-          include_docs: true
-        });
-
-    feed.onChange(function(resp) {
-      var doc = resp.results[0].doc;
-      var x = doc.last_step.x;
-      var y = doc.last_step.y;
-
-      $.log('step come');
-      $.log(x, y, doc.last_step_by);
-       
-      Game.partnerStep = false;
-      Game.updateBoard(x, y, Game.partnerTool);
-      $('#play-board').trigger('myStep');
-      $.log('step end');
-    });
-  },
-
-  enter: function(fun) {
-    dbUpdate(this.app, 'enter_game', this.gameCode, {}, function() {
-      fun();
-    });
-  },
-
-  iamEnterGame: function() {
-    if (this.gameCode) {
-      return true;
-    } else {
-      return false;
-    }
-  },
-
-  iamGameStarter: function() {
-    return !this.iamEnterGame();
-  },
-
-  step: function(x, fun) {
-    for(var y = this.boardMaxY; y >= 1; y = y-1) {
-      if (Game.isPlaceFree(x, y)) {
-        dbUpdate(Game.app, 'step', Game.gameCode, {x: x, y: y}, function(resp) {
-          Game.updateBoard(x, y, Game.myTool);
-          Game.partnerStep = true;
-        });
-
-        return;
-      }
-    }
-  },
-
-  isPlaceFree: function(x, y) {
-    var isFree =  (this.doc.board[x + 'x' + y] == null ? true : false);
-
-    return isFree; 
-  },
-
-  updateBoard: function(x, y, tool) {
-    x = parseInt(x);
-    y = parseInt(y);
-    this.doc.board[x + 'x' + y] = true;
-    $('#play-board tr:eq('+ (y + 1) +') td:eq('+ (x - 1) +')').trigger('update', [tool]);
   }
 
-}
+  //private
+  var gameCode = function() {
+    return gameDoc._id;
+  },
+  
+  updateBoard = function(x, y, tool) {
+    x = parseInt(x);
+    y = parseInt(y);
+  
+    board[x + 'x' + y] = true;
+    $('#play-board').trigger('update', [x, y, tool]);
+    isGameOver();
+  },
+
+  isGameOver = function() {
+  },
+
+  whenPartnerStepCome = function(resp) {
+    var doc = resp.results[0].doc;
+    var x = doc.last_step.x;
+    var y = doc.last_step.y;
+ 
+    updateBoard(x, y, partnerTool);
+  },
+ 
+  listenPartnerFeed = function() {
+    var feed = app.db.changes(null, {
+          filter: 'four_up/partner_step', 
+          include_docs: true,
+          doc_id: gameCode(), 
+          key: privateKey
+        });
+ 
+    feed.onChange(whenPartnerStepCome);
+  },
+
+  isPlaceFree = function(x, y) {
+    return isNull(board[x + 'x' + y]) ? true : false;
+  },
+
+  getFreeY = function(x) {
+     for(var y = boardMaxY; y >= 1; y = y-1) {
+       if (isPlaceFree(x, y)) {
+         return y;
+       }
+     }
+  },
+  
+  loadBoard = function() {
+    app.db.openDoc(gameCode(), {
+      success: function(doc) {
+        var lastStep = doc.last_step;
+        if (lastStep) {
+          updateBoard(lastStep.x, lastStep.y, partnerTool);
+        }
+      }
+    });
+  };
+
+  if (init) {
+    init();
+  }
+
+  //public
+  return {
+    createNew: function(fun) {
+      app.db.saveDoc(gameDoc, {
+        success: function(doc) {
+          $.pathbinder.go(gameCode());
+          listenPartnerFeed();
+          $('#play-board').trigger('myStep');
+        }
+      });
+    },
+  
+    iamEnterGame: function() {
+      return !iamGameStarter;
+    },
+
+    step: function(x, fun) {
+      var y = getFreeY(x);
+      dbUpdate(app, 'step', gameCode(), {x: x, y: y, key: privateKey}, function(resp) {
+        if (resp == 'ok') {
+          updateBoard(x, y, myTool);
+        }
+      });
+
+      //$('#play-board').trigger('partnerStep');
+    },
+
+    boardMaxX: function() { return boardMaxX },
+    boardMaxY: function() { return boardMaxY },
+    myTool: myTool
+  }
+};

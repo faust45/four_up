@@ -1,3 +1,26 @@
+function genRand() {
+  return Math.floor(Math.random()*10000000);
+}
+
+function getIDfromPath() {
+  var path = $.pathbinder.currentPath();
+  var id = path.replace('#', '');
+
+  return id;
+}
+
+function isBlank(value) {
+  return (value == null || value == '' || value == []);
+}
+
+function isNull(value) {
+  return (value == null);
+}
+
+function isDefined(value) {
+  return (value == null);
+}
+
 function range(start, end) {
    var arr = [];
 

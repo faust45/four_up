@@ -8,6 +8,7 @@
     <div id="main">
       <div id="new-game">
       </div>
+
       <div id="play-board">
       </div>
 
@@ -20,7 +21,7 @@
   <script type="text/javascript" charset="utf-8">
     $.log('my mess');
     $.couch.app(function(app) {
-      Game.init(app);
+      Game = GameModule(app);
 
       $("#play-board").evently("play-board", app);
       $("#new-game").evently("new-game", app);
