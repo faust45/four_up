@@ -1,10 +1,10 @@
-GameModule = function(docApp) {
+GameModule = function(app) {
   //init
-  var app = docApp;
   var boardMaxX = 6, boardMaxY = 7;
   var board = {};
   var privateKey = genRand();
   var gameDoc = {
+      type: 'Game'
   };
 
   var iamGameStarter = isBlank(getIDfromPath());
